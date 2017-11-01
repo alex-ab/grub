@@ -377,7 +377,7 @@ grub_video_gop_setup (unsigned int width, unsigned int height,
     }
 
   /* Keep current mode if possible.  */
-  if (gop->mode->info)
+  if (gop->mode->info && gop->mode->info->width != 800 && gop->mode->info->height != 600)
     {
       bpp = grub_video_gop_get_bpp (gop->mode->info);
       if (bpp && ((width == gop->mode->info->width
