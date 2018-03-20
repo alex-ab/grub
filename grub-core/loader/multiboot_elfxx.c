@@ -57,7 +57,7 @@ CONCAT(grub_multiboot_load_elf, XX) (mbi_load_data_t *mld)
   char *phdr_base;
   grub_err_t err;
   grub_relocator_chunk_t ch;
-  grub_uint32_t load_offset, load_size;
+  grub_uint32_t load_size;
   int i;
   void *source;
 
@@ -99,29 +99,6 @@ CONCAT(grub_multiboot_load_elf, XX) (mbi_load_data_t *mld)
 
   load_size = highest_load - mld->link_base_addr;
 
-  if (mld->relocatable)
-    {
-      if (load_size > mld->max_addr || mld->min_addr > mld->max_addr - load_size)
-	return grub_error (GRUB_ERR_BAD_OS, "invalid min/max address and/or load size");
-
-      err = grub_relocator_alloc_chunk_align (GRUB_MULTIBOOT (relocator), &ch,
-					      mld->min_addr, mld->max_addr - load_size,
-					      load_size, mld->align ? mld->align : 1,
-					      mld->preference, mld->avoid_efi_boot_services);
-    }
-  else
-    err = grub_relocator_alloc_chunk_addr (GRUB_MULTIBOOT (relocator), &ch,
-					   mld->link_base_addr, load_size);
-
-  if (err)
-    {
-      grub_dprintf ("multiboot_loader", "Cannot allocate memory for OS image\n");
-      return err;
-    }
-
-  mld->load_base_addr = get_physical_target_address (ch);
-  source = get_virtual_current_address (ch);
-
   grub_dprintf ("multiboot_loader", "link_base_addr=0x%x, load_base_addr=0x%x, "
 		"load_size=0x%x, relocatable=%d\n", mld->link_base_addr,
 		mld->load_base_addr, load_size, mld->relocatable);
@@ -133,13 +110,36 @@ CONCAT(grub_multiboot_load_elf, XX) (mbi_load_data_t *mld)
   /* Load every loadable segment in memory.  */
   for (i = 0; i < ehdr->e_phnum; i++)
     {
-      if (phdr(i)->p_type == PT_LOAD)
+      if (phdr(i)->p_type != PT_LOAD)
+        continue;
+
+      if (mld->relocatable)
+      {
+        if (load_size > mld->max_addr || mld->min_addr > mld->max_addr - load_size)
+          return grub_error (GRUB_ERR_BAD_OS, "invalid min/max address and/or load size");
+
+        err = grub_relocator_alloc_chunk_align (GRUB_MULTIBOOT (relocator), &ch,
+                                                mld->min_addr, mld->max_addr - load_size,
+                                                phdr(i)->p_memsz, mld->align ? mld->align : 1,
+                                                mld->preference, mld->avoid_efi_boot_services);
+      } else {
+        err = grub_relocator_alloc_chunk_addr (GRUB_MULTIBOOT (relocator), &ch,
+                                               phdr(i)->p_paddr, phdr(i)->p_memsz);
+      }
+
+      if (err)
         {
+          grub_dprintf ("multiboot_loader", "Cannot allocate memory for OS image\n");
+          return err;
+        }
+
+      if (mld->load_base_addr > get_physical_target_address (ch))
+        mld->load_base_addr = get_physical_target_address (ch);
+
+      source = get_virtual_current_address (ch);
 
 	  grub_dprintf ("multiboot_loader", "segment %d: paddr=0x%lx, memsz=0x%lx, vaddr=0x%lx\n",
 			i, (long) phdr(i)->p_paddr, (long) phdr(i)->p_memsz, (long) phdr(i)->p_vaddr);
-
-	  load_offset = phdr(i)->p_paddr - mld->link_base_addr;
 
 	  if (phdr(i)->p_filesz != 0)
 	    {
@@ -147,7 +147,7 @@ CONCAT(grub_multiboot_load_elf, XX) (mbi_load_data_t *mld)
 		  == (grub_off_t) -1)
 		return grub_errno;
 
-	      if (grub_file_read (mld->file, (grub_uint8_t *) source + load_offset, phdr(i)->p_filesz)
+	      if (grub_file_read (mld->file, (grub_uint8_t *) source, phdr(i)->p_filesz)
 		  != (grub_ssize_t) phdr(i)->p_filesz)
 		{
 		  if (!grub_errno)
@@ -158,9 +158,8 @@ CONCAT(grub_multiboot_load_elf, XX) (mbi_load_data_t *mld)
 	    }
 
           if (phdr(i)->p_filesz < phdr(i)->p_memsz)
-            grub_memset ((grub_uint8_t *) source + load_offset + phdr(i)->p_filesz, 0,
+            grub_memset ((grub_uint8_t *) source + phdr(i)->p_filesz, 0,
 			 phdr(i)->p_memsz - phdr(i)->p_filesz);
-        }
     }
 
   for (i = 0; i < ehdr->e_phnum; i++)
