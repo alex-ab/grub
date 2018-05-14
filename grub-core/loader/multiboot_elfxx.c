@@ -163,6 +163,7 @@ CONCAT(grub_multiboot_load_elf, XX) (mbi_load_data_t *mld)
         }
     }
 
+  while (1) { }
   for (i = 0; i < ehdr->e_phnum; i++)
     if (phdr(i)->p_vaddr <= ehdr->e_entry
 	&& phdr(i)->p_vaddr + phdr(i)->p_memsz > ehdr->e_entry)

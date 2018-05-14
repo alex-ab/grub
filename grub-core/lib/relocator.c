@@ -1236,6 +1236,11 @@ grub_relocator_alloc_chunk_addr (struct grub_relocator *rel,
 
   adjust_limits (rel, &min_addr, &max_addr, target, target);
 
+  grub_printf (
+		"A min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
+		(unsigned long long) min_addr, (unsigned long long) max_addr,
+		(unsigned long long) target);
+
   for (chunk = rel->chunks; chunk; chunk = chunk->next)
     if ((chunk->target <= target && target < chunk->target + chunk->size)
 	|| (target <= chunk->target && chunk->target < target + size))
@@ -1245,14 +1250,15 @@ grub_relocator_alloc_chunk_addr (struct grub_relocator *rel,
   if (!chunk)
     return grub_errno;
 
-  grub_dprintf ("relocator",
-		"min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
+  grub_printf (
+		"B min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
 		(unsigned long long) min_addr, (unsigned long long) max_addr,
 		(unsigned long long) target);
 
   do
     {
       /* A trick to improve Linux allocation.  */
+#if 1
 #if defined (__i386__) || defined (__x86_64__)
       if (target < 0x100000)
 	if (malloc_in_range (rel, rel->highestnonpostaddr, ~(grub_addr_t)0, 1,
@@ -1260,20 +1266,39 @@ grub_relocator_alloc_chunk_addr (struct grub_relocator *rel,
 	  {
 	    if (rel->postchunks > chunk->src)
 	      rel->postchunks = chunk->src;
+  grub_printf (
+		"C min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
+		(unsigned long long) min_addr, (unsigned long long) max_addr,
+		(unsigned long long) target);
 	    break;
 	  }
 #endif
-      if (malloc_in_range (rel, target, max_addr, 1, size, chunk, 1, 0))
+#endif /* if 1 */
+      if (malloc_in_range (rel, target, max_addr, 1, size, chunk, 1, 0)) {
+  grub_printf (
+		"D min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
+		(unsigned long long) min_addr, (unsigned long long) max_addr,
+		(unsigned long long) target);
 	break;
+      }
 
-      if (malloc_in_range (rel, min_addr, target, 1, size, chunk, 0, 0))
+      if (malloc_in_range (rel, min_addr, target, 1, size, chunk, 0, 0)) {
+  grub_printf (
+		"E min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
+		(unsigned long long) min_addr, (unsigned long long) max_addr,
+		(unsigned long long) target);
 	break;
+      }
 
       if (malloc_in_range (rel, rel->highestnonpostaddr, ~(grub_addr_t)0, 1,
 			   size, chunk, 0, 1))
 	{
 	  if (rel->postchunks > chunk->src)
 	    rel->postchunks = chunk->src;
+  grub_printf (
+		"F min_addr = 0x%llx, max_addr = 0x%llx, target = 0x%llx\n",
+		(unsigned long long) min_addr, (unsigned long long) max_addr,
+		(unsigned long long) target);
 	  break;
 	}
 
@@ -1309,9 +1334,8 @@ grub_relocator_alloc_chunk_addr (struct grub_relocator *rel,
   if (chunk->src > target)
     rel->relocators_size += grub_relocator_forward_size;
 
-  grub_dprintf ("relocator", "relocators_size=%ld\n",
-		(unsigned long) rel->relocators_size);
-
+  grub_printf ("relocators_size=%ld highestaddr=%lx highestnonpostaddr=%lx\n",
+		(unsigned long) rel->relocators_size, (unsigned long)rel->highestaddr, (unsigned long)rel->highestnonpostaddr);
   chunk->target = target;
   chunk->size = size;
   chunk->next = rel->chunks;
