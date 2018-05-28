@@ -52,7 +52,7 @@ static const struct grub_arg_option background_image_cmd_options[] =
        may not know the word stretch or normal I recommend
        putting the translation either here or in "Background image mode."
        string.  */
-     N_("stretch|normal"),
+     N_("stretch|normal|center"),
      ARG_TYPE_STRING},
     {0, 0, 0, 0, 0, 0}
   };
@@ -112,6 +112,45 @@ grub_gfxterm_background_image_cmd (grub_extcmd_context_t ctxt,
                   }
               }
           }
+
+      if (!state[BACKGROUND_CMD_ARGINDEX_MODE].set
+          || grub_strcmp (state[BACKGROUND_CMD_ARGINDEX_MODE].arg,
+                          "center") == 0)
+	{
+	  struct grub_video_bitmap *dst = 0;
+	  struct grub_video_bitmap *src = grub_gfxterm_background.bitmap;
+
+	  unsigned int width, height;
+	  grub_gfxterm_get_dimensions (&width, &height);
+
+	  unsigned const sw = src->mode_info.width;
+	  unsigned const sh = src->mode_info.height;
+
+	  if (sw <= width && sh <= height &&
+	      GRUB_ERR_NONE == grub_video_bitmap_create (&dst, width, height,
+	                                                 grub_gfxterm_background.bitmap->mode_info.blit_format))
+	    {
+	      grub_uint8_t *ddata = dst->data;
+	      grub_uint8_t *sdata = src->data;
+	      unsigned const dw = dst->mode_info.width;
+	      unsigned const dh = dst->mode_info.height;
+	      int const dstride = dst->mode_info.pitch;
+	      int const sstride = src->mode_info.pitch;
+	      /* bytes_per_pixel is the same for both src and dst. */
+	      int bytes_per_pixel = dst->mode_info.bytes_per_pixel;
+
+	      unsigned const off_x = (dw - sw) / 2;
+	      unsigned const off_y = (dh - sh) / 2;
+	      for (unsigned y = 0; y < sh; y++) {
+	          grub_memcpy(ddata + (off_x * bytes_per_pixel) + (y + off_y) * dstride,
+	                      sdata + y * sstride, sw * bytes_per_pixel);
+	      }
+
+	      /* Replace the original bitmap with the scaled one.  */
+	      grub_video_bitmap_destroy (grub_gfxterm_background.bitmap);
+	      grub_gfxterm_background.bitmap = dst;
+	  }
+	}
 
       /* If bitmap was loaded correctly, display it.  */
       if (grub_gfxterm_background.bitmap)
@@ -173,7 +212,7 @@ GRUB_MOD_INIT(gfxterm_background)
   background_image_cmd_handle =
     grub_register_extcmd ("background_image",
                           grub_gfxterm_background_image_cmd, 0,
-                          N_("[-m (stretch|normal)] FILE"),
+                          N_("[-m (stretch|normal|center)] FILE"),
                           N_("Load background image for active terminal."),
                           background_image_cmd_options);
   background_color_cmd_handle =
