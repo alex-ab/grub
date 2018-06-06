@@ -370,14 +370,15 @@ grub_video_gop_setup (unsigned int width, unsigned int height,
       err = grub_gop_get_preferred_mode (&preferred_width, &preferred_height);
       if (err || preferred_width >= 4096 || preferred_height >= 4096)
 	{
-	  preferred_width = 800;
-	  preferred_height = 600;
+//	  preferred_width = 800;
+//	  preferred_height = 600;
 	  grub_errno = GRUB_ERR_NONE;
 	}
     }
 
   /* Keep current mode if possible.  */
-  if (gop->mode->info && gop->mode->info->width != 800 && gop->mode->info->height != 600)
+/*
+  if (gop->mode->info && !gop->mode->info->width != 800 && gop->mode->info->height != 600)
     {
       bpp = grub_video_gop_get_bpp (gop->mode->info);
       if (bpp && ((width == gop->mode->info->width
@@ -390,7 +391,7 @@ grub_video_gop_setup (unsigned int width, unsigned int height,
 	  found = 1;
 	}
     }
- 
+ */
   if (!found)
     {
       unsigned mode;
