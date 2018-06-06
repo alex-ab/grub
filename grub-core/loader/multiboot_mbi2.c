@@ -380,10 +380,6 @@ grub_multiboot2_load (grub_file_t file, const char *filename)
 				       accepted_consoles,
 				       fbtag->width, fbtag->height,
 				       fbtag->depth, console_required);
-  else
-    err = grub_multiboot2_set_console (GRUB_MULTIBOOT2_CONSOLE_EGA_TEXT,
-				       accepted_consoles,
-				       0, 0, 0, console_required);
   return err;
 }
 

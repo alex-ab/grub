@@ -101,9 +101,11 @@ GRUB_MULTIBOOT (set_video_mode) (void)
   grub_err_t err;
   const char *modevar;
 
+/*
 #if GRUB_MACHINE_HAS_VGA_TEXT
   if (accepts_video)
 #endif
+*/
     {
       modevar = grub_env_get ("gfxpayload");
       if (! modevar || *modevar == 0)
@@ -118,10 +120,12 @@ GRUB_MULTIBOOT (set_video_mode) (void)
 	  grub_free (tmp);
 	}
     }
+/*
 #if GRUB_MACHINE_HAS_VGA_TEXT
   else
     err = grub_video_set_mode ("text", 0, 0);
 #endif
+*/
 
   return err;
 }
