@@ -20,6 +20,7 @@
 #ifndef GRUB_HEXDUMP_H
 #define GRUB_HEXDUMP_H	1
 
-void hexdump (unsigned long bse,char* buf,int len);
+void hexdump (unsigned long bse, char* buf, int len);
+void hexdump_ext (unsigned long bse, char* buf, int len, unsigned line_max, char disable_hex);
 
 #endif /* ! GRUB_HEXDUMP_H */

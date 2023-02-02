@@ -30,7 +30,9 @@ GRUB_MOD_LICENSE ("GPLv3+");
 static const struct grub_arg_option options[] = {
   {"skip", 's', 0, N_("Skip offset bytes from the beginning of file."), 0,
    ARG_TYPE_INT},
-  {"length", 'n', 0, N_("Read only LENGTH bytes."), 0, ARG_TYPE_INT},
+  {"length", 'n', 0, N_("Read only LENGTH bytes. (default 256)"), 0, ARG_TYPE_INT},
+  {"line",   'l', 0, N_("Screen line length. (default 80)"), 0, ARG_TYPE_INT},
+  {"nohex",  'h', 0, N_("Disable hex output, show solely characters. (default off)"), 0, ARG_TYPE_INT},
   {0, 0, 0, 0, 0, 0}
 };
 
@@ -38,8 +40,8 @@ static grub_err_t
 grub_cmd_hexdump (grub_extcmd_context_t ctxt, int argc, char **args)
 {
   struct grub_arg_list *state = ctxt->state;
-  char buf[GRUB_DISK_SECTOR_SIZE * 4];
-  grub_ssize_t size, length;
+  char buf[GRUB_DISK_SECTOR_SIZE * 4], disable_hex;
+  grub_ssize_t size, length, line_max;
   grub_disk_addr_t skip;
   int namelen;
 
@@ -49,9 +51,11 @@ grub_cmd_hexdump (grub_extcmd_context_t ctxt, int argc, char **args)
   namelen = grub_strlen (args[0]);
   skip = (state[0].set) ? grub_strtoull (state[0].arg, 0, 0) : 0;
   length = (state[1].set) ? grub_strtoul (state[1].arg, 0, 0) : 256;
+  line_max = (state[2].set) ? grub_strtoul (state[2].arg, 0, 0) : 80;
+  disable_hex = (state[3].set) ? grub_strtoul (state[3].arg, 0, 0) : 0;
 
   if (!grub_strcmp (args[0], "(mem)"))
-    hexdump (skip, (char *) (grub_addr_t) skip, length);
+    hexdump_ext (skip, (char *) (grub_addr_t) skip, length, line_max, disable_hex);
   else if ((args[0][0] == '(') && (args[0][namelen - 1] == ')'))
     {
       grub_disk_t disk;
@@ -76,7 +80,7 @@ grub_cmd_hexdump (grub_extcmd_context_t ctxt, int argc, char **args)
           if (grub_disk_read (disk, sector, ofs, len, buf))
             break;
 
-          hexdump (skip, buf, len);
+          hexdump_ext (skip, buf, len, line_max, disable_hex);
 
           ofs = 0;
           skip += len;
@@ -122,7 +126,7 @@ static grub_extcmd_t cmd;
 GRUB_MOD_INIT (hexdump)
 {
   cmd = grub_register_extcmd ("hexdump", grub_cmd_hexdump, 0,
-			      N_("[OPTIONS] FILE_OR_DEVICE"),
+			      N_("[OPTIONS] FILE_OR_DEVICE (hdX) or (mem)"),
 			      N_("Show raw contents of a file or memory."),
 			      options);
 }
